@@ -7,7 +7,8 @@ public class ServerMain {
         int serverPort = 2000;
 
         Server server = new Server(serverPort);
-        server.run();
+        Thread serverThread = new Thread(server);
+        serverThread.start();
 
     }
 }

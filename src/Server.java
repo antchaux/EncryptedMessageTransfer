@@ -1,9 +1,12 @@
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static java.lang.Thread.sleep;
@@ -15,6 +18,9 @@ public class Server implements Runnable{
     private ConcurrentHashMap<Integer, String>  passwordHashTable = new ConcurrentHashMap<>();
     private ServerSocketChannel 			    serverSocket;
     private String message;
+    private Socket con;
+    private ObjectInputStream is;
+    private ObjectOutputStream os;
 
     public Server(int port){
         init(port);
@@ -37,25 +43,35 @@ public class Server implements Runnable{
         if (channel == null)
             return;
 
-
-        Socket con = channel.socket();
+        con = channel.socket();
         try {
-            ObjectInputStream is = new ObjectInputStream(con.getInputStream());
-            String message = (String) is.readObject();
-            System.out.println("client> " + message);
-        } catch (IOException | ClassNotFoundException e) {
+            is = new ObjectInputStream(con.getInputStream());
+            os = new ObjectOutputStream(con.getOutputStream());
+            System.out.println("Connected to a new Client");
+        } catch (IOException e) {
             System.err.println("Connection error");
         }
     }
 
     public void run(){
-        while(true){
+        while(true) {
             try {
                 acceptConnection();
                 sleep(1);
             }
-            catch (InterruptedException | IOException e){
+            catch (InterruptedException | IOException e) {
                 e.printStackTrace();
+            }
+
+            if(con!=null) {
+                try {
+                    message = (String) is.readObject();
+                    System.out.println("Client > " + message);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
