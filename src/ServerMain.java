@@ -1,3 +1,5 @@
+import Classes.Server;
+
 /**
  * Created by antoine on 12/04/2017.
  */
@@ -8,6 +10,7 @@ public class ServerMain {
 
         Server server = new Server(serverPort);
         Thread serverThread = new Thread(server);
+        serverThread.setName("Server");
         serverThread.start();
 
     }
