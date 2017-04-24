@@ -5,62 +5,87 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Scanner;
 
-public class Client implements Runnable{
+public class Client implements Runnable {
 
-    public int clientId;
     protected InetSocketAddress serverAddress;
     private ObjectInputStream serverInputStream;
     private ObjectOutputStream serverOutputStream;
     private String message = "";
     private boolean keepConnectionOpened = true, clientCanWrite = true;
+    private String clientName = "TestClient";
+    private String clientPassword = "Password1234";
 
-    public Client(InetSocketAddress address){
+    public Client(InetSocketAddress address) {
         serverAddress = address;
     }
 
-    private void connectToServer(InetSocketAddress address) throws IOException{
+    private void connectToServer(InetSocketAddress address)
+            throws IOException, ClassNotFoundException, InterruptedException {
         Socket server = new Socket();
         server.setKeepAlive(true);
         server.connect(address);
-        System.out.println("Connected to server");
         serverOutputStream = new ObjectOutputStream(server.getOutputStream());
         serverInputStream = new ObjectInputStream(server.getInputStream());
+        //sendMessage(serverOutputStream, clientName);
     }
 
-    private void readMessage(ObjectInputStream is) throws ClassNotFoundException, IOException{
+    private String readMessage(ObjectInputStream is) throws ClassNotFoundException, IOException {
         BufferedReader in = new BufferedReader(new InputStreamReader(is));
         message = in.readLine();
-        if(message.equals("")) clientCanWrite = true;
-        else System.out.println("Server> " + message);
+        if (message.equals("")) clientCanWrite = true;
+        return message;
     }
 
-    private void sendMessage(ObjectOutputStream os) throws IOException, ClassNotFoundException{
-        System.out.println("Communicate with the server :");
+    private void displayMessage(String message) {
+        System.out.println("Server> " + message);
+    }
+
+    private String getMessageFromUser() {
         Scanner reader = new Scanner(System.in);  // Reading from System.in
-        message = reader.nextLine();
+        return reader.nextLine();
+    }
+
+    private void sendMessage(ObjectOutputStream os, String message) throws IOException, ClassNotFoundException {
         os.writeObject(message);
         os.flush();
-        if(message.equals("bye")){
-            keepConnectionOpened = false;
-            System.out.println("Closing connection with server");
+    }
+
+    private void handleServerMessage(ObjectInputStream is) throws ClassNotFoundException, IOException{
+        message = readMessage(is);
+        switch(message){
+            case "Authentication":
+                displayMessage("------------- Authentication -----------");
+                displayMessage("Did you already register ?(Y/N)");
+                sendMessage(serverOutputStream, "N");
+                break;
+            case "Login":
+                displayMessage("Login :");
+                clientName = getMessageFromUser();
+                sendMessage(serverOutputStream, clientName);
+                break;
+            case "Password":
+                displayMessage("Password :");
+                clientPassword = getMessageFromUser();
+                sendMessage(serverOutputStream, clientPassword);
+                break;
+            default:
+                displayMessage(message);
+                break;
         }
-        else System.out.println("Listening to the server :");
-        clientCanWrite = false;
+    }
+
+    private void closeConnection() {
+        System.out.println("Closing connection with server");
     }
 
     //@Override
-    public void run(){
-
+    public void run() {
         try {
             connectToServer(serverAddress);
-
-            while (keepConnectionOpened){
-                while(!clientCanWrite) readMessage(serverInputStream);
-                sendMessage(serverOutputStream);
-            }
-        } catch (IOException | ClassNotFoundException e) {
+            while(keepConnectionOpened) handleServerMessage(serverInputStream);
+            closeConnection();
+        } catch (IOException | ClassNotFoundException | InterruptedException e) {
             e.printStackTrace();
         }
     }
-
 }
